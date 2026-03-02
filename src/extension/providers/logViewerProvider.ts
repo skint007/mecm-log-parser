@@ -121,7 +121,7 @@ export class LogViewerProvider {
       `default-src 'none'`,
       `script-src 'nonce-${nonce}'`,
       `style-src ${webview.cspSource} 'unsafe-inline'`,
-      `font-src ${webview.cspSource}`,
+      `font-src ${webview.cspSource} data:`,
       `img-src ${webview.cspSource} data:`,
     ].join('; ');
 
