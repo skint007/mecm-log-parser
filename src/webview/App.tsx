@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { HostToWebviewMessage, LogEntry } from '../shared/types.js';
+import { Severity } from '../shared/types.js';
 import { useReadySignal, useVsCodeApi } from './hooks/useVsCodeApi.js';
-import { LogTable } from './components/LogTable.js';
+import { LogTable, type LogTableHandle, type FilterPreset } from './components/LogTable.js';
 import { Toolbar } from './components/Toolbar.js';
 import { TabBar, type FileTab } from './components/TabBar.js';
 
@@ -19,6 +20,11 @@ export function App() {
   const [activeTab, setActiveTab] = useState<string>('');   // filePath or 'merged'
   const [search, setSearch] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Phase 3 state
+  const [filterPreset, setFilterPreset] = useState<FilterPreset>('all');
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const logTableRef = useRef<LogTableHandle>(null);
 
   // -------------------------------------------------------------------------
   // Message handling
@@ -66,7 +72,6 @@ export function App() {
           if (prev !== msg.filePath) {
             return prev;
           }
-          // Activate the next available tab
           const remaining = [...files.keys()].filter(k => k !== msg.filePath);
           if (remaining.length >= 2) {
             return 'merged';
@@ -115,8 +120,6 @@ export function App() {
   // Drag-and-drop files onto the panel
   // -------------------------------------------------------------------------
 
-  // Use a ref so the drop handler always has the latest vscodeApi without
-  // needing to re-register the event listener on every render.
   const vscodeApiRef = useRef(vscodeApi);
   vscodeApiRef.current = vscodeApi;
 
@@ -128,7 +131,6 @@ export function App() {
       e.preventDefault();
       const paths: string[] = [];
       for (const file of Array.from(e.dataTransfer?.files ?? [])) {
-        // In VS Code's Electron environment, File objects expose a .path property
         const p = (file as File & { path?: string }).path;
         if (p) {
           paths.push(p);
@@ -148,6 +150,23 @@ export function App() {
   }, []);
 
   // -------------------------------------------------------------------------
+  // Keyboard navigation: F8 / Shift+F8 → next / prev error
+  //                      Alt+F8 / Shift+Alt+F8 → next / prev warning
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'F8') return;
+      e.preventDefault();
+      const severity = e.altKey ? Severity.Warning : Severity.Error;
+      const direction = e.shiftKey ? 'prev' : 'next';
+      logTableRef.current?.navigateTo(direction, severity);
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // -------------------------------------------------------------------------
   // Derived data
   // -------------------------------------------------------------------------
 
@@ -164,7 +183,6 @@ export function App() {
   const activeEntries: LogEntry[] = useMemo(() => {
     if (activeTab === 'merged') {
       const all = [...files.values()].flatMap(f => f.entries);
-      // Sort merged entries chronologically by UTC timestamp
       all.sort((a, b) => (a.timestamp < b.timestamp ? -1 : a.timestamp > b.timestamp ? 1 : 0));
       return all;
     }
@@ -172,15 +190,35 @@ export function App() {
   }, [files, activeTab]);
 
   const activeFileName = useMemo(() => {
-    if (activeTab === 'merged') {
-      return 'Merged view';
-    }
+    if (activeTab === 'merged') return 'Merged view';
     return files.get(activeTab)?.fileName ?? '';
   }, [files, activeTab]);
 
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
     setSearch('');
+    setFilterPreset('all');
+    setColumnFilters({});
+  }, []);
+
+  const handleColumnFilterClick = useCallback((field: string, value: string) => {
+    setColumnFilters(prev => {
+      const next = { ...prev };
+      if (next[field] === value) {
+        delete next[field];   // toggle off
+      } else {
+        next[field] = value;  // toggle on
+      }
+      return next;
+    });
+  }, []);
+
+  const handleClearColumnFilters = useCallback(() => {
+    setColumnFilters({});
+  }, []);
+
+  const handleExportCsv = useCallback(() => {
+    logTableRef.current?.exportCsv();
   }, []);
 
   // -------------------------------------------------------------------------
@@ -218,12 +256,21 @@ export function App() {
         entryCount={activeEntries.length}
         search={search}
         onSearchChange={setSearch}
+        filterPreset={filterPreset}
+        onFilterPresetChange={setFilterPreset}
+        columnFilters={columnFilters}
+        onClearColumnFilters={handleClearColumnFilters}
+        onExportCsv={handleExportCsv}
       />
       <div className="app-grid-container">
         <LogTable
+          ref={logTableRef}
           entries={activeEntries}
           quickFilterText={search}
           showLogFileColumn={activeTab === 'merged'}
+          filterPreset={filterPreset}
+          columnFilters={columnFilters}
+          onColumnFilterClick={handleColumnFilterClick}
         />
       </div>
     </div>

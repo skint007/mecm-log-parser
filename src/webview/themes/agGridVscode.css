@@ -170,6 +170,91 @@ body {
   white-space: nowrap;
 }
 
+/* -----------------------------------------------------------------------
+   Toolbar — filter preset buttons
+----------------------------------------------------------------------- */
+
+.toolbar-presets {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.preset-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--vscode-button-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-editor-foreground);
+  font-size: 0.85em;
+  font-family: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.1s, background-color 0.1s;
+  white-space: nowrap;
+}
+
+.preset-btn:hover {
+  opacity: 1;
+  background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.preset-btn-active {
+  opacity: 1;
+  background-color: var(--vscode-button-secondaryBackground, var(--vscode-list-activeSelectionBackground));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-list-activeSelectionForeground));
+  border-color: transparent;
+}
+
+.column-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--vscode-focusBorder, #0078d4);
+  background: color-mix(in srgb, var(--vscode-focusBorder, #0078d4) 15%, transparent);
+  color: var(--vscode-editor-foreground);
+  font-size: 0.82em;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.column-filter-pill:hover {
+  background: color-mix(in srgb, var(--vscode-focusBorder, #0078d4) 25%, transparent);
+}
+
+/* -----------------------------------------------------------------------
+   Toolbar — export button
+----------------------------------------------------------------------- */
+
+.toolbar-export-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--vscode-button-border, var(--vscode-panel-border));
+  border-radius: 3px;
+  background: transparent;
+  color: var(--vscode-editor-foreground);
+  font-size: 0.85em;
+  font-family: inherit;
+  cursor: pointer;
+  opacity: 0.75;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.1s;
+}
+
+.toolbar-export-btn:hover {
+  opacity: 1;
+  background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+/* -----------------------------------------------------------------------
+   Toolbar — search box
+----------------------------------------------------------------------- */
+
 .toolbar-search {
   flex: 1;
   display: flex;
