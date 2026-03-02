@@ -1,7 +1,11 @@
 export type {
   HostToWebviewMessage,
-  LoadFileMessage,
+  AddFileMessage,
+  RefreshFileMessage,
+  RemoveFileMessage,
   ErrorMessage,
   WebviewToHostMessage,
   ReadyMessage,
+  CloseFileMessage,
+  OpenFilesMessage,
 } from '../../shared/types.js';

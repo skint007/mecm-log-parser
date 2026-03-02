@@ -7,24 +7,27 @@ export function activate(context: vscode.ExtensionContext): void {
   const openFileCmd = vscode.commands.registerCommand(
     'mecmLogViewer.openFile',
     async (uri?: vscode.Uri) => {
-      let targetUri = uri;
+      let uris: vscode.Uri[];
 
-      if (!targetUri) {
-        // Triggered from command palette — show a file picker
+      if (uri) {
+        // Triggered from explorer context menu — open the right-clicked file
+        uris = [uri];
+      } else {
+        // Triggered from command palette — show a multi-select file picker
         const picked = await vscode.window.showOpenDialog({
           canSelectFiles: true,
           canSelectFolders: false,
-          canSelectMany: false,
+          canSelectMany: true,
           filters: { 'Log files': ['log'], 'All files': ['*'] },
-          title: 'Open MECM Log File',
+          title: 'Open MECM Log File(s)',
         });
         if (!picked || picked.length === 0) {
           return;
         }
-        targetUri = picked[0];
+        uris = picked;
       }
 
-      await provider.openLogFile(targetUri);
+      await provider.openLogFiles(uris);
     }
   );
 
@@ -32,5 +35,5 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
-  // Panels are disposed via their onDidDispose handlers; nothing extra needed.
+  // Panels and watchers are disposed via their onDidDispose handlers.
 }

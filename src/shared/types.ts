@@ -20,17 +20,30 @@ export interface LogEntry {
   sourceFile: string;
   /** Execution context, usually empty string. */
   context: string;
+  /** Basename of the log file this entry came from — set by the webview for merged view. */
+  logFile?: string;
 }
 
 // ---------------------------------------------------------------------------
 // Messages: extension host → webview
 // ---------------------------------------------------------------------------
 
-export interface LoadFileMessage {
-  type: 'loadFile';
+export interface AddFileMessage {
+  type: 'addFile';
   fileName: string;
   filePath: string;
   entries: LogEntry[];
+}
+
+export interface RefreshFileMessage {
+  type: 'refreshFile';
+  filePath: string;
+  entries: LogEntry[];
+}
+
+export interface RemoveFileMessage {
+  type: 'removeFile';
+  filePath: string;
 }
 
 export interface ErrorMessage {
@@ -38,7 +51,11 @@ export interface ErrorMessage {
   message: string;
 }
 
-export type HostToWebviewMessage = LoadFileMessage | ErrorMessage;
+export type HostToWebviewMessage =
+  | AddFileMessage
+  | RefreshFileMessage
+  | RemoveFileMessage
+  | ErrorMessage;
 
 // ---------------------------------------------------------------------------
 // Messages: webview → extension host
@@ -48,4 +65,14 @@ export interface ReadyMessage {
   type: 'ready';
 }
 
-export type WebviewToHostMessage = ReadyMessage;
+export interface CloseFileMessage {
+  type: 'closeFile';
+  filePath: string;
+}
+
+export interface OpenFilesMessage {
+  type: 'openFiles';
+  paths: string[];
+}
+
+export type WebviewToHostMessage = ReadyMessage | CloseFileMessage | OpenFilesMessage;

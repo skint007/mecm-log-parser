@@ -44,9 +44,11 @@ function applyVsCodeTheme(el: HTMLElement) {
 
 interface LogTableProps {
   entries: LogEntry[];
+  quickFilterText?: string;
+  showLogFileColumn?: boolean;
 }
 
-export function LogTable({ entries }: LogTableProps) {
+export function LogTable({ entries, quickFilterText, showLogFileColumn }: LogTableProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -123,8 +125,18 @@ export function LogTable({ entries }: LogTableProps) {
         sortable: true,
         filter: 'agTextColumnFilter',
       },
+      {
+        field: 'logFile',
+        headerName: 'Log File',
+        width: 160,
+        minWidth: 100,
+        resizable: true,
+        sortable: true,
+        filter: 'agTextColumnFilter',
+        hide: !showLogFileColumn,
+      },
     ],
-    []
+    [showLogFileColumn]
   );
 
   const defaultColDef = useMemo<ColDef>(
@@ -159,6 +171,7 @@ export function LogTable({ entries }: LogTableProps) {
         defaultColDef={defaultColDef}
         getRowId={getRowId}
         getRowClass={getRowClass}
+        quickFilterText={quickFilterText}
         rowBuffer={20}
         suppressCellFocus={false}
         enableCellTextSelection={true}

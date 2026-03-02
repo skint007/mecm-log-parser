@@ -2,30 +2,59 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { readLogFile } from '../utils/fileHandler.js';
 import { parseLogContent } from '../parser/mecmParser.js';
-import type { HostToWebviewMessage, WebviewToHostMessage } from '../../shared/types.js';
+import type {
+  HostToWebviewMessage,
+  WebviewToHostMessage,
+} from '../../shared/types.js';
 
 export class LogViewerProvider {
-  private readonly panels = new Map<string, vscode.WebviewPanel>();
+  private panel: vscode.WebviewPanel | undefined;
+  private isReady = false;
+  private pendingUris: vscode.Uri[] = [];
+  private loadedPaths = new Set<string>();
+  private watchers = new Map<string, vscode.Disposable>();
 
   constructor(private readonly extensionUri: vscode.Uri) {}
 
   /**
-   * Opens (or reveals) a webview panel for the given log file URI.
+   * Opens one or more log files in the shared viewer panel.
+   * Already-open files are skipped; new files are added as tabs.
    */
-  async openLogFile(uri: vscode.Uri): Promise<void> {
-    const filePath = uri.fsPath;
-    const fileName = path.basename(filePath);
+  async openLogFiles(uris: vscode.Uri[]): Promise<void> {
+    const newUris = uris.filter(u => !this.loadedPaths.has(u.fsPath));
 
-    // Reveal existing panel if already open for this file
-    const existing = this.panels.get(filePath);
-    if (existing) {
-      existing.reveal(vscode.ViewColumn.One);
+    if (!this.panel) {
+      this.createPanel();
+    } else {
+      this.panel.reveal();
+    }
+
+    // Mark paths as loading immediately to prevent duplicate loads
+    for (const uri of newUris) {
+      this.loadedPaths.add(uri.fsPath);
+    }
+
+    if (newUris.length === 0) {
       return;
     }
 
-    const panel = vscode.window.createWebviewPanel(
+    if (this.isReady) {
+      await this.loadFiles(newUris);
+    } else {
+      this.pendingUris.push(...newUris);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Private helpers
+  // ---------------------------------------------------------------------------
+
+  private createPanel(): void {
+    const nonce = generateNonce();
+
+    this.panel = vscode.window.createWebviewPanel(
       'mecmLogViewer',
-      `MECM: ${fileName}`,
+      'MECM Log Viewer',
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -36,35 +65,49 @@ export class LogViewerProvider {
       }
     );
 
-    this.panels.set(filePath, panel);
+    this.panel.webview.html = this.buildHtml(this.panel.webview, nonce);
 
-    panel.onDidDispose(() => {
-      this.panels.delete(filePath);
-    });
-
-    const nonce = generateNonce();
-    panel.webview.html = this.buildHtml(panel.webview, nonce);
-
-    // Send data only after the webview signals it is ready (React has mounted)
-    panel.webview.onDidReceiveMessage(
+    this.panel.webview.onDidReceiveMessage(
       async (message: WebviewToHostMessage) => {
         if (message.type === 'ready') {
-          await this.sendFileData(panel, uri, fileName, filePath);
+          this.isReady = true;
+          const pending = this.pendingUris.splice(0);
+          if (pending.length > 0) {
+            await this.loadFiles(pending);
+          }
+        } else if (message.type === 'closeFile') {
+          this.handleCloseFile(message.filePath);
+        } else if (message.type === 'openFiles') {
+          const uris = message.paths.map(p => vscode.Uri.file(p));
+          await this.openLogFiles(uris);
         }
       }
     );
+
+    this.panel.onDidDispose(() => {
+      this.panel = undefined;
+      this.isReady = false;
+      this.pendingUris = [];
+      this.loadedPaths.clear();
+      for (const w of this.watchers.values()) {
+        w.dispose();
+      }
+      this.watchers.clear();
+    });
   }
 
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
+  private async loadFiles(uris: vscode.Uri[]): Promise<void> {
+    await Promise.all(uris.map(uri => this.loadFile(uri)));
+  }
 
-  private async sendFileData(
-    panel: vscode.WebviewPanel,
-    uri: vscode.Uri,
-    fileName: string,
-    filePath: string
-  ): Promise<void> {
+  private async loadFile(uri: vscode.Uri): Promise<void> {
+    const filePath = uri.fsPath;
+    const fileName = path.basename(filePath);
+
+    if (!this.panel) {
+      return;
+    }
+
     try {
       await vscode.window.withProgress(
         {
@@ -77,12 +120,13 @@ export class LogViewerProvider {
           const { entries, skippedLines } = parseLogContent(content);
 
           const msg: HostToWebviewMessage = {
-            type: 'loadFile',
+            type: 'addFile',
             fileName,
             filePath,
             entries,
           };
-          panel.webview.postMessage(msg);
+          this.panel?.webview.postMessage(msg);
+          this.setupWatcher(uri);
 
           if (skippedLines > 0) {
             vscode.window.showInformationMessage(
@@ -96,10 +140,65 @@ export class LogViewerProvider {
         type: 'error',
         message: err instanceof Error ? err.message : String(err),
       };
-      panel.webview.postMessage(msg);
+      this.panel?.webview.postMessage(msg);
       vscode.window.showErrorMessage(
         err instanceof Error ? err.message : String(err)
       );
+    }
+  }
+
+  private setupWatcher(uri: vscode.Uri): void {
+    const filePath = uri.fsPath;
+    if (this.watchers.has(filePath)) {
+      return;
+    }
+
+    const watcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(
+        vscode.Uri.file(path.dirname(filePath)),
+        path.basename(filePath)
+      )
+    );
+
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const onChange = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(async () => {
+        if (!this.panel) {
+          return;
+        }
+        try {
+          const content = await readLogFile(uri);
+          const { entries } = parseLogContent(content);
+          const msg: HostToWebviewMessage = {
+            type: 'refreshFile',
+            filePath,
+            entries,
+          };
+          this.panel.webview.postMessage(msg);
+        } catch {
+          // Silently ignore refresh errors (e.g. file temporarily locked)
+        }
+      }, 500);
+    };
+
+    watcher.onDidChange(onChange);
+
+    this.watchers.set(filePath, {
+      dispose: () => {
+        clearTimeout(debounceTimer);
+        watcher.dispose();
+      },
+    });
+  }
+
+  private handleCloseFile(filePath: string): void {
+    this.loadedPaths.delete(filePath);
+    const watcher = this.watchers.get(filePath);
+    if (watcher) {
+      watcher.dispose();
+      this.watchers.delete(filePath);
     }
   }
 
