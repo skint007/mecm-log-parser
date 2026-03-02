@@ -5,7 +5,6 @@ import {
   type GetRowIdParams,
   type RowClassParams,
   themeQuartz,
-  colorSchemeVariable,
   AllCommunityModule,
   ModuleRegistry,
 } from 'ag-grid-community';
@@ -16,9 +15,25 @@ import { SeverityBadge } from './SeverityBadge.js';
 // AG Grid 33 requires explicit module registration.
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-// AG Grid 33 theme: quartz base + colorSchemeVariable so AG Grid reads
-// colour values from our CSS custom properties (--ag-* mapped to --vscode-*).
-const gridTheme = themeQuartz.withPart(colorSchemeVariable);
+// Pass VS Code CSS variable references directly as AG Grid theme params.
+// ColorValue accepts any string so `var(--vscode-*)` works fine and AG Grid
+// injects these into its own scoped CSS, avoiding any specificity battle.
+// browserColorScheme: 'inherit' lets the grid follow VS Code's color-scheme.
+const gridTheme = themeQuartz.withParams({
+  backgroundColor: 'var(--vscode-editor-background)',
+  foregroundColor: 'var(--vscode-editor-foreground)',
+  borderColor: 'var(--vscode-panel-border)',
+  chromeBackgroundColor: 'var(--vscode-editorGroupHeader-tabsBackground)',
+  headerBackgroundColor: 'var(--vscode-editorGroupHeader-tabsBackground)',
+  headerTextColor: 'var(--vscode-editor-foreground)',
+  rowHoverColor: 'var(--vscode-list-hoverBackground)',
+  selectedRowBackgroundColor: 'var(--vscode-list-activeSelectionBackground)',
+  oddRowBackgroundColor: 'var(--vscode-editor-background)',
+  menuBackgroundColor: 'var(--vscode-editorWidget-background)',
+  fontFamily: 'var(--vscode-font-family)',
+  fontSize: 'var(--vscode-font-size, 13px)',
+  browserColorScheme: 'inherit',
+});
 
 interface LogTableProps {
   entries: LogEntry[];
