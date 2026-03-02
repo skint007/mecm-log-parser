@@ -7,11 +7,16 @@ const isProduction = process.argv.includes('--production');
 
 function ensureAgGridCss() {
   mkdirSync('dist', { recursive: true });
-  const src = resolve('node_modules/ag-grid-community/styles/ag-grid.css');
-  if (existsSync(src)) {
-    copyFileSync(src, 'dist/ag-grid.css');
-  } else {
-    console.warn('[web] Warning: ag-grid.css not found at', src);
+  for (const [file, dest] of [
+    ['ag-grid.css', 'dist/ag-grid.css'],
+    ['ag-theme-quartz.css', 'dist/ag-theme-quartz.css'],
+  ]) {
+    const src = resolve(`node_modules/ag-grid-community/styles/${file}`);
+    if (existsSync(src)) {
+      copyFileSync(src, dest);
+    } else {
+      console.warn(`[web] Warning: ${file} not found at`, src);
+    }
   }
 }
 

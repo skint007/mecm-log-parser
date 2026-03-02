@@ -1,10 +1,9 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import {
   type ColDef,
   type GetRowIdParams,
   type RowClassParams,
-  themeQuartz,
   AllCommunityModule,
   ModuleRegistry,
 } from 'ag-grid-community';
@@ -15,36 +14,47 @@ import { SeverityBadge } from './SeverityBadge.js';
 // AG Grid 33 requires explicit module registration.
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-// AG Grid 33's withParams() processes colors in JavaScript (to compute derived
-// values), so CSS variable strings like 'var(--vscode-*)' are not resolved.
-// We must read the actual computed values at startup via getComputedStyle.
-function buildVsCodeTheme() {
+// Apply VS Code theme colors to the AG Grid CSS theme via CSS custom properties
+// set directly on the wrapper element. Inline element.style.setProperty() takes
+// precedence over any class-scoped AG Grid CSS, so the colors are guaranteed
+// to apply correctly regardless of theme or specificity.
+function applyVsCodeTheme(el: HTMLElement) {
   const s = getComputedStyle(document.body);
-  const get = (v: string, fallback: string) => s.getPropertyValue(v).trim() || fallback;
+  const get = (v: string, fb: string) => s.getPropertyValue(v).trim() || fb;
   const isDark = document.body.getAttribute('data-vscode-theme-kind') !== 'vscode-light';
 
-  return themeQuartz.withParams({
-    backgroundColor:            get('--vscode-editor-background',                isDark ? '#1e1e1e' : '#ffffff'),
-    foregroundColor:            get('--vscode-editor-foreground',                isDark ? '#d4d4d4' : '#333333'),
-    borderColor:                get('--vscode-panel-border',                     isDark ? '#474747' : '#d4d4d4'),
-    chromeBackgroundColor:      get('--vscode-editorGroupHeader-tabsBackground', isDark ? '#252526' : '#f3f3f3'),
-    headerBackgroundColor:      get('--vscode-editorGroupHeader-tabsBackground', isDark ? '#252526' : '#f3f3f3'),
-    headerTextColor:            get('--vscode-editor-foreground',                isDark ? '#d4d4d4' : '#333333'),
-    rowHoverColor:              get('--vscode-list-hoverBackground',             isDark ? '#2a2d2e' : '#f0f0f0'),
-    selectedRowBackgroundColor: get('--vscode-list-activeSelectionBackground',   isDark ? '#094771' : '#0060c0'),
-    oddRowBackgroundColor:      get('--vscode-editor-background',                isDark ? '#1e1e1e' : '#ffffff'),
-    menuBackgroundColor:        get('--vscode-editorWidget-background',          isDark ? '#252526' : '#f3f3f3'),
-    browserColorScheme:         isDark ? 'dark' : 'light',
-  });
-}
+  const vars: Record<string, string> = {
+    '--ag-background-color':             get('--vscode-editor-background',                isDark ? '#1e1e1e' : '#ffffff'),
+    '--ag-foreground-color':             get('--vscode-editor-foreground',                isDark ? '#d4d4d4' : '#333333'),
+    '--ag-border-color':                 get('--vscode-panel-border',                     isDark ? '#474747' : '#d4d4d4'),
+    '--ag-header-background-color':      get('--vscode-editorGroupHeader-tabsBackground', isDark ? '#252526' : '#f3f3f3'),
+    '--ag-header-foreground-color':      get('--vscode-editor-foreground',                isDark ? '#d4d4d4' : '#333333'),
+    '--ag-row-hover-color':              get('--vscode-list-hoverBackground',             isDark ? '#2a2d2e' : '#f0f0f0'),
+    '--ag-selected-row-background-color':get('--vscode-list-activeSelectionBackground',   isDark ? '#094771' : '#0060c0'),
+    '--ag-odd-row-background-color':     get('--vscode-editor-background',                isDark ? '#1e1e1e' : '#ffffff'),
+    '--ag-popup-background-color':       get('--vscode-editorWidget-background',          isDark ? '#252526' : '#f3f3f3'),
+    '--ag-font-family':                  get('--vscode-font-family',                      'sans-serif'),
+    '--ag-font-size':                    get('--vscode-font-size',                        '13px'),
+  };
 
-const gridTheme = buildVsCodeTheme();
+  for (const [prop, value] of Object.entries(vars)) {
+    el.style.setProperty(prop, value);
+  }
+}
 
 interface LogTableProps {
   entries: LogEntry[];
 }
 
 export function LogTable({ entries }: LogTableProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (wrapperRef.current) {
+      applyVsCodeTheme(wrapperRef.current);
+    }
+  }, []);
+
   const columnDefs = useMemo<ColDef<LogEntry>[]>(
     () => [
       {
@@ -141,9 +151,9 @@ export function LogTable({ entries }: LogTableProps) {
   );
 
   return (
-    <div style={{ height: '100%', width: '100%' }}>
+    <div ref={wrapperRef} className="ag-theme-quartz" style={{ height: '100%', width: '100%' }}>
       <AgGridReact<LogEntry>
-        theme={gridTheme}
+        theme="legacy"
         rowData={entries}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}

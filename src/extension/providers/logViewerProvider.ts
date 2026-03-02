@@ -110,6 +110,9 @@ export class LogViewerProvider {
     const agGridCssUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'ag-grid.css')
     );
+    const agGridThemeCssUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.extensionUri, 'dist', 'ag-theme-quartz.css')
+    );
     const webviewCssUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this.extensionUri, 'dist', 'webview.css')
     );
@@ -130,6 +133,7 @@ export class LogViewerProvider {
   <meta http-equiv="Content-Security-Policy" content="${csp}">
   <title>MECM Log Viewer</title>
   <link rel="stylesheet" href="${agGridCssUri}">
+  <link rel="stylesheet" href="${agGridThemeCssUri}">
   <link rel="stylesheet" href="${webviewCssUri}">
 </head>
 <body>
