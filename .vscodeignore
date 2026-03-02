@@ -1,0 +1,12 @@
+.vscode/**
+src/**
+node_modules/**
+.gitignore
+esbuild.extension.mjs
+esbuild.webview.mjs
+tsconfig.json
+vitest.config.ts
+*.test.ts
+out/**
+Logs/**
+PLAN.md

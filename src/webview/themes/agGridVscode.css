@@ -1,0 +1,175 @@
+/*
+ * Map AG Grid CSS variables to VS Code theme tokens.
+ * AG Grid 33 reads these custom properties as its theming layer.
+ */
+
+:root {
+  /* Core colours */
+  --ag-background-color: var(--vscode-editor-background);
+  --ag-foreground-color: var(--vscode-editor-foreground);
+  --ag-border-color: var(--vscode-panel-border);
+  --ag-secondary-border-color: var(--vscode-panel-border);
+
+  /* Header */
+  --ag-header-background-color: var(--vscode-editorGroupHeader-tabsBackground);
+  --ag-header-foreground-color: var(--vscode-editor-foreground);
+  --ag-header-column-separator-color: var(--vscode-panel-border);
+
+  /* Rows */
+  --ag-odd-row-background-color: var(--vscode-editor-background);
+  --ag-row-hover-background-color: var(--vscode-list-hoverBackground);
+  --ag-selected-row-background-color: var(--vscode-list-activeSelectionBackground);
+
+  /* Input / filter */
+  --ag-input-focus-border-color: var(--vscode-focusBorder);
+  --ag-input-border-color: var(--vscode-input-border, var(--vscode-panel-border));
+  --ag-input-background-color: var(--vscode-input-background);
+
+  /* Popup menus (filter menus) */
+  --ag-popup-background-color: var(--vscode-editorWidget-background);
+  --ag-popup-shadow: 0 2px 8px var(--vscode-widget-shadow);
+
+  /* Fonts */
+  --ag-font-family: var(--vscode-editor-font-family, var(--vscode-font-family));
+  --ag-font-size: var(--vscode-editor-font-size, 13px);
+
+  /* Cell sizing */
+  --ag-cell-horizontal-padding: 8px;
+  --ag-row-height: 24px;
+  --ag-header-height: 32px;
+}
+
+/* -----------------------------------------------------------------------
+   Severity row highlighting
+----------------------------------------------------------------------- */
+
+.row-warning {
+  background-color: var(--vscode-inputValidation-warningBackground, rgba(255, 200, 0, 0.12)) !important;
+}
+
+.row-warning:hover {
+  background-color: var(--vscode-list-hoverBackground) !important;
+}
+
+.row-error {
+  background-color: var(--vscode-inputValidation-errorBackground, rgba(255, 50, 50, 0.15)) !important;
+}
+
+.row-error:hover {
+  background-color: var(--vscode-list-hoverBackground) !important;
+}
+
+/* -----------------------------------------------------------------------
+   Severity badge pill
+----------------------------------------------------------------------- */
+
+.severity-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.85em;
+  font-weight: 600;
+  text-align: center;
+  min-width: 36px;
+}
+
+.severity-info {
+  color: var(--vscode-terminal-ansiGreen, #4caf50);
+  background-color: color-mix(in srgb, var(--vscode-terminal-ansiGreen, #4caf50) 20%, transparent);
+}
+
+.severity-warning {
+  color: var(--vscode-editorWarning-foreground, #f0b429);
+  background-color: color-mix(in srgb, var(--vscode-editorWarning-foreground, #f0b429) 20%, transparent);
+}
+
+.severity-error {
+  color: var(--vscode-editorError-foreground, #f14c4c);
+  background-color: color-mix(in srgb, var(--vscode-editorError-foreground, #f14c4c) 20%, transparent);
+}
+
+/* -----------------------------------------------------------------------
+   App shell layout
+----------------------------------------------------------------------- */
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-grid-container {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* -----------------------------------------------------------------------
+   Toolbar
+----------------------------------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 12px;
+  background-color: var(--vscode-editorGroupHeader-tabsBackground);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  flex-shrink: 0;
+}
+
+.toolbar-filename {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 400px;
+}
+
+.toolbar-count {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.9em;
+}
+
+/* -----------------------------------------------------------------------
+   Loading / error states
+----------------------------------------------------------------------- */
+
+.app-loading,
+.app-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 12px;
+  color: var(--vscode-editor-foreground);
+}
+
+.app-error {
+  color: var(--vscode-editorError-foreground);
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--vscode-progressBar-background, #0078d4);
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
