@@ -19,7 +19,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 // values), so CSS variable strings like 'var(--vscode-*)' are not resolved.
 // We must read the actual computed values at startup via getComputedStyle.
 function buildVsCodeTheme() {
-  const s = getComputedStyle(document.documentElement);
+  const s = getComputedStyle(document.body);
   const get = (v: string, fallback: string) => s.getPropertyValue(v).trim() || fallback;
   const isDark = document.body.getAttribute('data-vscode-theme-kind') !== 'vscode-light';
 
