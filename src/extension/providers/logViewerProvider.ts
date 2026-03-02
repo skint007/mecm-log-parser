@@ -2,10 +2,17 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { readLogFile } from '../utils/fileHandler.js';
 import { parseLogContent } from '../parser/mecmParser.js';
+import { Severity } from '../../shared/types.js';
 import type {
   HostToWebviewMessage,
   WebviewToHostMessage,
 } from '../../shared/types.js';
+
+interface FileStats {
+  total: number;
+  errors: number;
+  warnings: number;
+}
 
 export class LogViewerProvider {
   private panel: vscode.WebviewPanel | undefined;
@@ -13,8 +20,12 @@ export class LogViewerProvider {
   private pendingUris: vscode.Uri[] = [];
   private loadedPaths = new Set<string>();
   private watchers = new Map<string, vscode.Disposable>();
+  private fileStats = new Map<string, FileStats>();
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly statusBar: vscode.StatusBarItem,
+  ) {}
 
   /**
    * Opens one or more log files in the shared viewer panel.
@@ -89,6 +100,8 @@ export class LogViewerProvider {
       this.isReady = false;
       this.pendingUris = [];
       this.loadedPaths.clear();
+      this.fileStats.clear();
+      this.statusBar.hide();
       for (const w of this.watchers.values()) {
         w.dispose();
       }
@@ -116,20 +129,42 @@ export class LogViewerProvider {
           cancellable: false,
         },
         async () => {
+          const config = vscode.workspace.getConfiguration('mecmLogViewer');
+          const maxEntries = config.get<number>('maxEntries', 0);
+          const defaultSeverityFilter = config.get<string>('defaultSeverityFilter', 'all');
+
           const content = await readLogFile(uri);
-          const { entries, skippedLines } = parseLogContent(content);
+          let { entries, skippedLines } = parseLogContent(content);
+
+          if (maxEntries > 0 && entries.length > maxEntries) {
+            entries = entries.slice(0, maxEntries);
+          }
+
+          this.fileStats.set(filePath, {
+            total: entries.length,
+            errors: entries.filter(e => e.severity === Severity.Error).length,
+            warnings: entries.filter(e => e.severity === Severity.Warning).length,
+          });
+          this.updateStatusBar();
+
+          const defaultFilterPreset: 'all' | 'warnings+' | 'errors' =
+            defaultSeverityFilter === 'warnings+' || defaultSeverityFilter === 'errors'
+              ? defaultSeverityFilter
+              : 'all';
 
           const msg: HostToWebviewMessage = {
             type: 'addFile',
             fileName,
             filePath,
             entries,
+            defaultFilterPreset,
+            skippedLines,
           };
           this.panel?.webview.postMessage(msg);
           this.setupWatcher(uri);
 
           if (skippedLines > 0) {
-            vscode.window.showInformationMessage(
+            void vscode.window.showInformationMessage(
               `${fileName}: ${skippedLines} line(s) could not be parsed and were skipped.`
             );
           }
@@ -141,7 +176,7 @@ export class LogViewerProvider {
         message: err instanceof Error ? err.message : String(err),
       };
       this.panel?.webview.postMessage(msg);
-      vscode.window.showErrorMessage(
+      void vscode.window.showErrorMessage(
         err instanceof Error ? err.message : String(err)
       );
     }
@@ -169,8 +204,23 @@ export class LogViewerProvider {
           return;
         }
         try {
+          const config = vscode.workspace.getConfiguration('mecmLogViewer');
+          const maxEntries = config.get<number>('maxEntries', 0);
+
           const content = await readLogFile(uri);
-          const { entries } = parseLogContent(content);
+          let { entries } = parseLogContent(content);
+
+          if (maxEntries > 0 && entries.length > maxEntries) {
+            entries = entries.slice(0, maxEntries);
+          }
+
+          this.fileStats.set(filePath, {
+            total: entries.length,
+            errors: entries.filter(e => e.severity === Severity.Error).length,
+            warnings: entries.filter(e => e.severity === Severity.Warning).length,
+          });
+          this.updateStatusBar();
+
           const msg: HostToWebviewMessage = {
             type: 'refreshFile',
             filePath,
@@ -195,11 +245,31 @@ export class LogViewerProvider {
 
   private handleCloseFile(filePath: string): void {
     this.loadedPaths.delete(filePath);
+    this.fileStats.delete(filePath);
+    this.updateStatusBar();
     const watcher = this.watchers.get(filePath);
     if (watcher) {
       watcher.dispose();
       this.watchers.delete(filePath);
     }
+  }
+
+  private updateStatusBar(): void {
+    if (this.fileStats.size === 0) {
+      this.statusBar.hide();
+      return;
+    }
+
+    let total = 0, errors = 0, warnings = 0;
+    for (const stats of this.fileStats.values()) {
+      total += stats.total;
+      errors += stats.errors;
+      warnings += stats.warnings;
+    }
+
+    this.statusBar.text =
+      `$(list-unordered) ${total.toLocaleString()}  $(error) ${errors.toLocaleString()}  $(warning) ${warnings.toLocaleString()}`;
+    this.statusBar.show();
   }
 
   private buildHtml(webview: vscode.Webview, nonce: string): string {

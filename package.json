@@ -48,7 +48,29 @@
         "id": "log",
         "extensions": [".log"]
       }
-    ]
+    ],
+    "configuration": {
+      "title": "MECM Log Viewer",
+      "properties": {
+        "mecmLogViewer.maxEntries": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "Maximum number of log entries to load per file. 0 = no limit. Entries beyond the limit are discarded from the end of the file."
+        },
+        "mecmLogViewer.defaultSeverityFilter": {
+          "type": "string",
+          "enum": ["all", "warnings+", "errors"],
+          "enumDescriptions": [
+            "Show all entries",
+            "Show warnings and errors only",
+            "Show errors only"
+          ],
+          "default": "all",
+          "description": "Severity filter applied automatically when a file is first opened."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

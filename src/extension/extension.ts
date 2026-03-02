@@ -2,7 +2,16 @@ import * as vscode from 'vscode';
 import { LogViewerProvider } from './providers/logViewerProvider.js';
 
 export function activate(context: vscode.ExtensionContext): void {
-  const provider = new LogViewerProvider(context.extensionUri);
+  // Status bar item — always visible, shows aggregate entry/error/warning counts
+  const statusBar = vscode.window.createStatusBarItem(
+    vscode.StatusBarAlignment.Right,
+    100
+  );
+  statusBar.command = 'mecmLogViewer.openFile';
+  statusBar.tooltip = 'MECM Log Viewer — click to open a log file';
+  context.subscriptions.push(statusBar);
+
+  const provider = new LogViewerProvider(context.extensionUri, statusBar);
 
   const openFileCmd = vscode.commands.registerCommand(
     'mecmLogViewer.openFile',
@@ -10,10 +19,8 @@ export function activate(context: vscode.ExtensionContext): void {
       let uris: vscode.Uri[];
 
       if (uri) {
-        // Triggered from explorer context menu — open the right-clicked file
         uris = [uri];
       } else {
-        // Triggered from command palette — show a multi-select file picker
         const picked = await vscode.window.showOpenDialog({
           canSelectFiles: true,
           canSelectFolders: false,

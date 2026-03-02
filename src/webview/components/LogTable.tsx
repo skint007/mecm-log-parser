@@ -57,6 +57,7 @@ export type FilterPreset = 'all' | 'warnings+' | 'errors';
 export interface LogTableHandle {
   exportCsv(): void;
   navigateTo(direction: 'next' | 'prev', severity?: Severity): void;
+  clearSelection(): void;
 }
 
 interface LogTableProps {
@@ -66,19 +67,22 @@ interface LogTableProps {
   filterPreset?: FilterPreset;
   columnFilters?: Record<string, string>;
   onColumnFilterClick?: (field: string, value: string) => void;
+  onEntrySelected?: (entry: LogEntry | null) => void;
 }
 
 export const LogTable = forwardRef<LogTableHandle, LogTableProps>(
   function LogTable(
-    { entries, quickFilterText, showLogFileColumn, filterPreset, columnFilters, onColumnFilterClick },
+    { entries, quickFilterText, showLogFileColumn, filterPreset, columnFilters, onColumnFilterClick, onEntrySelected },
     ref
   ) {
     const wrapperRef = useRef<HTMLDivElement>(null);
     const [gridApi, setGridApi] = useState<GridApi<LogEntry> | null>(null);
 
-    // Stable ref so column defs don't need to be re-memoized when the callback changes
+    // Stable refs so callbacks don't cause re-memoization of column defs
     const onColumnFilterClickRef = useRef(onColumnFilterClick);
     onColumnFilterClickRef.current = onColumnFilterClick;
+    const onEntrySelectedRef = useRef(onEntrySelected);
+    onEntrySelectedRef.current = onEntrySelected;
 
     useEffect(() => {
       if (wrapperRef.current) {
@@ -104,6 +108,11 @@ export const LogTable = forwardRef<LogTableHandle, LogTableProps>(
 
       void gridApi.setFilterModel(Object.keys(model).length > 0 ? model : null);
     }, [gridApi, filterPreset, columnFilters]);
+
+    const onSelectionChanged = useCallback(() => {
+      const rows = gridApi?.getSelectedRows() ?? [];
+      onEntrySelectedRef.current?.(rows[0] ?? null);
+    }, [gridApi]);
 
     useImperativeHandle(ref, () => ({
       exportCsv() {
@@ -135,6 +144,9 @@ export const LogTable = forwardRef<LogTableHandle, LogTableProps>(
 
         gridApi.ensureIndexVisible(targetIndex, 'middle');
         gridApi.setFocusedCell(targetIndex, 'timestampDisplay');
+      },
+      clearSelection() {
+        gridApi?.deselectAll();
       },
     }), [gridApi]);
 
@@ -270,6 +282,8 @@ export const LogTable = forwardRef<LogTableHandle, LogTableProps>(
           getRowClass={getRowClass}
           quickFilterText={quickFilterText}
           onGridReady={onGridReady}
+          rowSelection="single"
+          onSelectionChanged={onSelectionChanged}
           rowBuffer={20}
           suppressCellFocus={false}
           enableCellTextSelection={true}

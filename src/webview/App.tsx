@@ -5,10 +5,12 @@ import { useReadySignal, useVsCodeApi } from './hooks/useVsCodeApi.js';
 import { LogTable, type LogTableHandle, type FilterPreset } from './components/LogTable.js';
 import { Toolbar } from './components/Toolbar.js';
 import { TabBar, type FileTab } from './components/TabBar.js';
+import { EntryDetail } from './components/EntryDetail.js';
 
 interface FileData {
   fileName: string;
   entries: LogEntry[];
+  defaultFilterPreset: FilterPreset;
 }
 
 export function App() {
@@ -26,6 +28,13 @@ export function App() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const logTableRef = useRef<LogTableHandle>(null);
 
+  // Phase 4 state
+  const [selectedEntry, setSelectedEntry] = useState<LogEntry | null>(null);
+
+  // Stable ref for files — used in callbacks that need current files without deps
+  const filesRef = useRef(files);
+  filesRef.current = files;
+
   // -------------------------------------------------------------------------
   // Message handling
   // -------------------------------------------------------------------------
@@ -39,13 +48,23 @@ export function App() {
           ...e,
           logFile: msg.fileName,
         }));
+        const defaultFilterPreset: FilterPreset = (
+          msg.defaultFilterPreset === 'warnings+' || msg.defaultFilterPreset === 'errors'
+            ? msg.defaultFilterPreset
+            : 'all'
+        );
+        const isFirstFile = files.size === 0;
         setFiles(prev => {
           const next = new Map(prev);
-          next.set(msg.filePath, { fileName: msg.fileName, entries: tagged });
+          next.set(msg.filePath, { fileName: msg.fileName, entries: tagged, defaultFilterPreset });
           return next;
         });
         // Auto-activate the first file to arrive
         setActiveTab(prev => prev === '' ? msg.filePath : prev);
+        // Apply default filter preset for the first file
+        if (isFirstFile) {
+          setFilterPreset(defaultFilterPreset);
+        }
 
       } else if (msg.type === 'refreshFile') {
         setFiles(prev => {
@@ -197,8 +216,11 @@ export function App() {
   const handleTabChange = useCallback((tab: string) => {
     setActiveTab(tab);
     setSearch('');
-    setFilterPreset('all');
+    const defaultPreset = filesRef.current.get(tab)?.defaultFilterPreset ?? 'all';
+    setFilterPreset(defaultPreset);
     setColumnFilters({});
+    setSelectedEntry(null);
+    logTableRef.current?.clearSelection();
   }, []);
 
   const handleColumnFilterClick = useCallback((field: string, value: string) => {
@@ -219,6 +241,15 @@ export function App() {
 
   const handleExportCsv = useCallback(() => {
     logTableRef.current?.exportCsv();
+  }, []);
+
+  const handleEntrySelected = useCallback((entry: LogEntry | null) => {
+    setSelectedEntry(entry);
+  }, []);
+
+  const handleDetailClose = useCallback(() => {
+    setSelectedEntry(null);
+    logTableRef.current?.clearSelection();
   }, []);
 
   // -------------------------------------------------------------------------
@@ -263,15 +294,21 @@ export function App() {
         onExportCsv={handleExportCsv}
       />
       <div className="app-grid-container">
-        <LogTable
-          ref={logTableRef}
-          entries={activeEntries}
-          quickFilterText={search}
-          showLogFileColumn={activeTab === 'merged'}
-          filterPreset={filterPreset}
-          columnFilters={columnFilters}
-          onColumnFilterClick={handleColumnFilterClick}
-        />
+        <div className="app-grid-wrapper">
+          <LogTable
+            ref={logTableRef}
+            entries={activeEntries}
+            quickFilterText={search}
+            showLogFileColumn={activeTab === 'merged'}
+            filterPreset={filterPreset}
+            columnFilters={columnFilters}
+            onColumnFilterClick={handleColumnFilterClick}
+            onEntrySelected={handleEntrySelected}
+          />
+        </div>
+        {selectedEntry && (
+          <EntryDetail entry={selectedEntry} onClose={handleDetailClose} />
+        )}
       </div>
     </div>
   );

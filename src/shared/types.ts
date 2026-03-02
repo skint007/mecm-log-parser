@@ -33,6 +33,10 @@ export interface AddFileMessage {
   fileName: string;
   filePath: string;
   entries: LogEntry[];
+  /** Severity filter preset to apply when this file is first activated. */
+  defaultFilterPreset?: 'all' | 'warnings+' | 'errors';
+  /** Number of lines skipped during parsing. */
+  skippedLines?: number;
 }
 
 export interface RefreshFileMessage {
