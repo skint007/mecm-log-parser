@@ -15,25 +15,30 @@ import { SeverityBadge } from './SeverityBadge.js';
 // AG Grid 33 requires explicit module registration.
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-// Pass VS Code CSS variable references directly as AG Grid theme params.
-// ColorValue accepts any string so `var(--vscode-*)` works fine and AG Grid
-// injects these into its own scoped CSS, avoiding any specificity battle.
-// browserColorScheme: 'inherit' lets the grid follow VS Code's color-scheme.
-const gridTheme = themeQuartz.withParams({
-  backgroundColor: 'var(--vscode-editor-background)',
-  foregroundColor: 'var(--vscode-editor-foreground)',
-  borderColor: 'var(--vscode-panel-border)',
-  chromeBackgroundColor: 'var(--vscode-editorGroupHeader-tabsBackground)',
-  headerBackgroundColor: 'var(--vscode-editorGroupHeader-tabsBackground)',
-  headerTextColor: 'var(--vscode-editor-foreground)',
-  rowHoverColor: 'var(--vscode-list-hoverBackground)',
-  selectedRowBackgroundColor: 'var(--vscode-list-activeSelectionBackground)',
-  oddRowBackgroundColor: 'var(--vscode-editor-background)',
-  menuBackgroundColor: 'var(--vscode-editorWidget-background)',
-  fontFamily: 'var(--vscode-font-family)',
-  fontSize: 'var(--vscode-font-size, 13px)',
-  browserColorScheme: 'inherit',
-});
+// AG Grid 33's withParams() processes colors in JavaScript (to compute derived
+// values), so CSS variable strings like 'var(--vscode-*)' are not resolved.
+// We must read the actual computed values at startup via getComputedStyle.
+function buildVsCodeTheme() {
+  const s = getComputedStyle(document.documentElement);
+  const get = (v: string, fallback: string) => s.getPropertyValue(v).trim() || fallback;
+  const isDark = document.body.getAttribute('data-vscode-theme-kind') !== 'vscode-light';
+
+  return themeQuartz.withParams({
+    backgroundColor:            get('--vscode-editor-background',                isDark ? '#1e1e1e' : '#ffffff'),
+    foregroundColor:            get('--vscode-editor-foreground',                isDark ? '#d4d4d4' : '#333333'),
+    borderColor:                get('--vscode-panel-border',                     isDark ? '#474747' : '#d4d4d4'),
+    chromeBackgroundColor:      get('--vscode-editorGroupHeader-tabsBackground', isDark ? '#252526' : '#f3f3f3'),
+    headerBackgroundColor:      get('--vscode-editorGroupHeader-tabsBackground', isDark ? '#252526' : '#f3f3f3'),
+    headerTextColor:            get('--vscode-editor-foreground',                isDark ? '#d4d4d4' : '#333333'),
+    rowHoverColor:              get('--vscode-list-hoverBackground',             isDark ? '#2a2d2e' : '#f0f0f0'),
+    selectedRowBackgroundColor: get('--vscode-list-activeSelectionBackground',   isDark ? '#094771' : '#0060c0'),
+    oddRowBackgroundColor:      get('--vscode-editor-background',                isDark ? '#1e1e1e' : '#ffffff'),
+    menuBackgroundColor:        get('--vscode-editorWidget-background',          isDark ? '#252526' : '#f3f3f3'),
+    browserColorScheme:         isDark ? 'dark' : 'light',
+  });
+}
+
+const gridTheme = buildVsCodeTheme();
 
 interface LogTableProps {
   entries: LogEntry[];
