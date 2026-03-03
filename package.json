@@ -17,6 +17,7 @@
     "viewer",
     "ConfigMgr"
   ],
+  "icon": "images/icon.png",
   "activationEvents": [
     "onCommand:mecmLogViewer.openFile",
     "onLanguage:log"
