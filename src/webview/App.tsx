@@ -46,6 +46,7 @@ export function App() {
       if (msg.type === 'addFile') {
         const tagged: LogEntry[] = msg.entries.map(e => ({
           ...e,
+          id: `${msg.filePath}:${e.id}`,
           logFile: msg.fileName,
         }));
         const defaultFilterPreset: FilterPreset = (
@@ -74,6 +75,7 @@ export function App() {
           }
           const tagged: LogEntry[] = msg.entries.map(e => ({
             ...e,
+            id: `${msg.filePath}:${e.id}`,
             logFile: existing.fileName,
           }));
           const next = new Map(prev);
