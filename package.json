@@ -2,7 +2,7 @@
   "name": "mecm-log-parser",
   "displayName": "MECM Log Viewer",
   "description": "Parse and display MECM/SCCM log files in an interactive AG Grid table.",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "publisher": "skint007",
   "engines": {
     "vscode": "^1.96.0"
