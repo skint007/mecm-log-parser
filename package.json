@@ -2,13 +2,21 @@
   "name": "mecm-log-viewer",
   "displayName": "MECM Log Viewer",
   "description": "Parse and display MECM/SCCM log files in an interactive AG Grid table.",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "publisher": "your-publisher-id",
   "engines": {
     "vscode": "^1.96.0"
   },
-  "categories": ["Other"],
-  "keywords": ["MECM", "SCCM", "log", "viewer", "ConfigMgr"],
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "MECM",
+    "SCCM",
+    "log",
+    "viewer",
+    "ConfigMgr"
+  ],
   "activationEvents": [
     "onCommand:mecmLogViewer.openFile",
     "onLanguage:log"
@@ -46,7 +54,9 @@
     "languages": [
       {
         "id": "log",
-        "extensions": [".log"]
+        "extensions": [
+          ".log"
+        ]
       }
     ],
     "configuration": {
@@ -60,7 +70,11 @@
         },
         "mecmLogViewer.defaultSeverityFilter": {
           "type": "string",
-          "enum": ["all", "warnings+", "errors"],
+          "enum": [
+            "all",
+            "warnings+",
+            "errors"
+          ],
           "enumDescriptions": [
             "Show all entries",
             "Show warnings and errors only",
