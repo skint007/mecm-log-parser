@@ -44,6 +44,7 @@ export function TabBar({ tabs, activeTab, onTabChange }: TabBarProps) {
           key={tab.filePath}
           className={`tab${activeTab === tab.filePath ? ' tab-active' : ''}`}
           onClick={() => onTabChange(tab.filePath)}
+          onMouseDown={e => { if (e.button === 1) { e.preventDefault(); closeTab(tab.filePath, e); } }}
           title={tab.filePath}
         >
           <span className="tab-label">{tab.fileName}</span>
